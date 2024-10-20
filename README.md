@@ -1,4 +1,4 @@
-# CalcPal---Flask-Application
+# CalcPal---Flask-Application-CNN
 
 ## Build the Docker Image
 docker build -t dyscalculia-flask-app-cnn .
