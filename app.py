@@ -17,7 +17,15 @@ try:
     model_path = os.path.join(models_directory, "predict-number_cnn_model.h5")
     model = load_model(model_path)
 except Exception as e:
-    raise RuntimeError(f"Failed to load the verbal diagnosis model: {str(e)}")
+    raise RuntimeError(f"Failed to load the CNN diagnosis model: {str(e)}")
+
+# math symbol CNN
+try:
+    # Directly provide the path to the model file
+    model_path = os.path.join(models_directory, "math-symbol-cnn.h5")
+    math_symbol__model = load_model(model_path)
+except Exception as e:
+    raise RuntimeError(f"Failed to load the CNN diagnosis model: {str(e)}")
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -62,6 +70,57 @@ def predict():
     predicted_label = np.argmax(predictions, axis=1)
     
     return jsonify({'predicted_label': int(predicted_label[0])})
+
+
+# math symbol CNN
+class_names = ['Add', 'Decimal', 'Divide', 'Equal', 'Minus', 'Multiply']
+
+# Preprocessing part
+def preprocess_math_image(img_data):
+    img = Image.open(io.BytesIO(img_data))
+
+    # Convert the image to RGB if it has an alpha channel (e.g., RGBA)
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    
+    # Resize to match the input size of the model
+    img = img.resize((150, 150))  
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array /= 255.  # Normalize the image data
+    return img_array
+
+@app.route('/predict-symbol', methods=['POST'])
+def predict_symbol():
+    try:
+        # Get the base64 image from the request
+        data = request.json
+        if 'image' not in data:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        # Decode the base64 image
+        image_data = base64.b64decode(data['image'])
+
+        # Preprocess the image
+        img_array = preprocess_math_image(image_data)
+
+        # Make a prediction
+        prediction = math_symbol__model.predict(img_array)[0]
+        predicted_class_index = np.argmax(prediction)
+        predicted_class_label = class_names[predicted_class_index]
+
+        # Create a dictionary of class probabilities
+        class_probabilities = {class_names[i]: float(prediction[i]) for i in range(len(class_names))}
+
+        # Return the result as JSON
+        return jsonify({
+            'predicted_class': predicted_class_label,
+            'class_probabilities': class_probabilities
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # Lists all available routes in the Flask application
 @app.route('/routes')
